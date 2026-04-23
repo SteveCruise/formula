@@ -22,7 +22,7 @@ func TestEngineEval(t *testing.T) {
 }
 
 func TestExtractFXVariables(t *testing.T) {
-	got, err := ExtractFXVariables("f1 + f20 + f1 + f1f2")
+	got, err := ExtractFXVariables("f1 + f20 + f1 + f1f2 + f2f3f4")
 	if err != nil {
 		t.Fatalf("ExtractFXVariables() error = %v", err)
 	}
@@ -30,6 +30,7 @@ func TestExtractFXVariables(t *testing.T) {
 	want := []*Join{
 		{Id: 1, AssocId: 0},
 		{Id: 1, AssocId: 2},
+		{Id: 2, AssocId: 3, AssocAssocId: 4},
 		{Id: 20, AssocId: 0},
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -38,7 +39,7 @@ func TestExtractFXVariables(t *testing.T) {
 }
 
 func TestExtractFXVariables_DeduplicateByJoinValue(t *testing.T) {
-	got, err := ExtractFXVariables("f1 + f01 + f1f2 + f01f2")
+	got, err := ExtractFXVariables("f1 + f01 + f1f2 + f01f2 + f2f3f4 + f02f03f04")
 	if err != nil {
 		t.Fatalf("ExtractFXVariables() error = %v", err)
 	}
@@ -46,6 +47,7 @@ func TestExtractFXVariables_DeduplicateByJoinValue(t *testing.T) {
 	want := []*Join{
 		{Id: 1, AssocId: 0},
 		{Id: 1, AssocId: 2},
+		{Id: 2, AssocId: 3, AssocAssocId: 4},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("ExtractFXVariables() got = %v, want = %v", got, want)
@@ -53,7 +55,7 @@ func TestExtractFXVariables_DeduplicateByJoinValue(t *testing.T) {
 }
 
 func TestExtractFXVariables_InvalidAny(t *testing.T) {
-	_, err := ExtractFXVariables("f1f2f3 + 1")
+	_, err := ExtractFXVariables("f1f2f3f4 + 1")
 	if err == nil {
 		t.Fatalf("ExtractFXVariables() error = nil, want non-nil")
 	}
@@ -63,8 +65,8 @@ func TestExtractFXVariables_InvalidAny(t *testing.T) {
 		t.Fatalf("ExtractFXVariables() error = %v, want *VariableRuleError", err)
 	}
 
-	if ruleErr.Name != "f1f2f3" && ruleErr.Name != "1" {
-		t.Fatalf("VariableRuleError.Name = %q, want %q or %q", ruleErr.Name, "f1f2f3", "1")
+	if ruleErr.Name != "f1f2f3f4" && ruleErr.Name != "1" {
+		t.Fatalf("VariableRuleError.Name = %q, want %q or %q", ruleErr.Name, "f1f2f3f4", "1")
 	}
 }
 

@@ -5,10 +5,10 @@
 ## 功能
 
 - 提供 API：执行符合 expr 规则的表达式并返回结果。
-- 提供 API：解析表达式并提取符合 `fx/fxfx` 规则的变量。
+- 提供 API：解析表达式并提取符合 `fx/fxfx/fxfxfx` 规则的变量。
   - `x` 为 1 位或多位数字。
-  - 合法示例：`f1`、`f20`、`f1f2`、`f10f200`。
-  - 非法示例：`f1f2f3`（即 `fxfxfx`，会报错）。
+  - 合法示例：`f1`、`f20`、`f1f2`、`f10f200`、`f2f3f4`。
+  - 非法示例：`f1f2f3f4`（超过三段）、`abc`（非规则变量）。
 
 ## 安装依赖
 
@@ -31,15 +31,16 @@ result, err := engine.Eval("f1 + f2 * 2", map[string]any{
 ### 2) 提取并校验变量（返回 Join）
 
 ```go
-vars, err := formula.ExtractFXVariables("f1 + f2f3 + max(a, 10)")
-// vars == []*formula.Join{{Id:1, AssocId:0}, {Id:2, AssocId:3}}
+vars, err := formula.ExtractFXVariables("f1 + f2f3f4")
+// vars == []*formula.Join{{Id:1, AssocId:0, AssocAssocId:0}, {Id:2, AssocId:3, AssocAssocId:4}}
 ```
 
 映射规则：
-- `f1` -> `Join{Id:1, AssocId:0}`
-- `f2f3` -> `Join{Id:2, AssocId:3}`
+- `f1` -> `Join{Id:1, AssocId:0, AssocAssocId:0}`
+- `f2f3` -> `Join{Id:2, AssocId:3, AssocAssocId:0}`
+- `f2f3f4` -> `Join{Id:2, AssocId:3, AssocAssocId:4}`
 
-如果表达式里出现 `f1f2f3` 这种 `fxfxfx` 形式，会返回 `VariableRuleError`。
+如果表达式里出现不符合规则的变量（例如 `f1f2f3f4` 或 `abc`），会返回 `VariableRuleError`。
 
 ## 运行 demo
 

@@ -11,18 +11,19 @@ import (
 )
 
 var (
-	fxOrFxfxPattern = regexp.MustCompile(`^f(\d+)(?:f(\d+))?$`)
+	fxPattern = regexp.MustCompile(`^f(\d+)(?:f(\d+))?(?:f(\d+))?$`)
 )
 
 // VariableRuleError 表示表达式中出现了不符合变量命名规则的变量。
 //
 // 规则说明：
-// - 合法变量仅允许两种形态：
+// - 合法变量仅允许三种形态：
 //  1. fx   -> 例如 f1、f20；
 //  2. fxfx -> 例如 f1f2、f10f200。
+//  3. fxfxfx -> 例如 f2f3f4、f10f20f30。
 //
 // - x 表示 1 位或多位数字；
-// - 若出现任何不符合以上两种形态的变量（如 f1f2f3、abc、x1 等），将返回该错误。
+// - 若出现任何不符合以上三种形态的变量（如 f1f2f3f4、abc、x1 等），将返回该错误。
 type VariableRuleError struct {
 	// Name 为不符合规则的变量名。
 	Name string
@@ -33,7 +34,7 @@ func (e *VariableRuleError) Error() string {
 	return fmt.Sprintf("变量 %q 不符合规则：仅允许 fx 或 fxfx（x 为 1 位或多位数字）", e.Name)
 }
 
-// ExtractFXVariables 解析 expr 表达式并提取所有符合 fx/fxfx 规则的变量到 Join 结构体中。
+// ExtractFXVariables 解析 expr 表达式并提取所有符合 fx/fxfx/fxfxfx 规则的变量到 Join 结构体中。
 //
 // 参数：
 // - expression：待解析表达式。
@@ -46,8 +47,8 @@ func (e *VariableRuleError) Error() string {
 // 1) 使用 parser.Parse 对表达式做语法解析，确保“先解析后提取”；
 // 2) 遍历 AST，提取所有标识符；
 // 3) 对每个标识符进行规则校验：
-//   - 命中 ^f(\d+)(f(\d+))?$ 则提取数字并构建 Join；
-//   - 不命中的任何标识符（如 f1f2f3、abc、max 等）均视为非法，返回 VariableRuleError。
+//   - 命中 ^f(\d+)(f(\d+))?(f(\d+))?$ 则提取数字并构建 Join；
+//   - 不命中的任何标识符（如 f1f2f3f4、abc、max 等）均视为非法，返回 VariableRuleError。
 func ExtractFXVariables(expression string) ([]*Join, error) {
 	tree, err := parser.Parse(expression)
 	if err != nil {
@@ -60,7 +61,7 @@ func ExtractFXVariables(expression string) ([]*Join, error) {
 	joins := make([]*Join, 0, len(collector.set))
 	seen := make(map[Join]struct{}, len(collector.set))
 	for name := range collector.set {
-		match := fxOrFxfxPattern.FindStringSubmatch(name)
+		match := fxPattern.FindStringSubmatch(name)
 		if match != nil {
 			id, convErr := strconv.ParseInt(match[1], 10, 64)
 			if convErr != nil {
@@ -76,13 +77,22 @@ func ExtractFXVariables(expression string) ([]*Join, error) {
 				assocID = parsedAssocID
 			}
 
-			key := Join{Id: id, AssocId: assocID}
+			assocAssocID := int64(0)
+			if len(match) > 3 && match[3] != "" {
+				parsedAssocAssocID, assocAssocErr := strconv.ParseInt(match[3], 10, 64)
+				if assocAssocErr != nil {
+					return nil, fmt.Errorf("解析变量 %q 的 assocAssocId 失败: %w", name, assocAssocErr)
+				}
+				assocAssocID = parsedAssocAssocID
+			}
+
+			key := Join{Id: id, AssocId: assocID, AssocAssocId: assocAssocID}
 			if _, ok := seen[key]; ok {
 				continue
 			}
 			seen[key] = struct{}{}
 
-			joins = append(joins, &Join{Id: id, AssocId: assocID})
+			joins = append(joins, &Join{Id: id, AssocId: assocID, AssocAssocId: assocAssocID})
 			continue
 		}
 
@@ -91,6 +101,9 @@ func ExtractFXVariables(expression string) ([]*Join, error) {
 
 	sort.Slice(joins, func(i, j int) bool {
 		if joins[i].Id == joins[j].Id {
+			if joins[i].AssocId == joins[j].AssocId {
+				return joins[i].AssocAssocId < joins[j].AssocAssocId
+			}
 			return joins[i].AssocId < joins[j].AssocId
 		}
 		return joins[i].Id < joins[j].Id
@@ -119,6 +132,7 @@ func (c *identifierCollector) Visit(node *ast.Node) {
 }
 
 type Join struct {
-	Id      int64
-	AssocId int64
+	Id           int64
+	AssocId      int64
+	AssocAssocId int64
 }

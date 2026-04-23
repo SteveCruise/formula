@@ -21,7 +21,7 @@ func main() {
 		log.Fatalf("执行失败: %v", err)
 	}
 
-	vars, err := formula.ExtractFXVariables("f1 + f2f3")
+	vars, err := formula.ExtractFXVariables("f1 + f2f3f4")
 	if err != nil {
 		log.Fatalf("变量提取失败: %v", err)
 	}

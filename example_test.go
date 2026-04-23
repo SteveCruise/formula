@@ -18,7 +18,7 @@ func Example() {
 		log.Fatal(err)
 	}
 
-	vars, err := formula.ExtractFXVariables("f1 + f2f3")
+	vars, err := formula.ExtractFXVariables("f1 + f2f3f4")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func Example() {
 	fmt.Println(derefJoins(vars))
 	// Output:
 	// 32
-	// [{1 0} {2 3}]
+	// [{1 0 0} {2 3 4}]
 }
 
 func derefJoins(in []*formula.Join) []formula.Join {
