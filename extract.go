@@ -59,7 +59,7 @@ func ExtractFXVariables(expression string) ([]*Join, error) {
 	ast.Walk(&tree.Node, collector)
 
 	joins := make([]*Join, 0, len(collector.set))
-	seen := make(map[Join]struct{}, len(collector.set))
+	seen := make(map[string]struct{}, len(collector.set))
 	for name := range collector.set {
 		match := fxPattern.FindStringSubmatch(name)
 		if match != nil {
@@ -86,13 +86,14 @@ func ExtractFXVariables(expression string) ([]*Join, error) {
 				assocAssocID = parsedAssocAssocID
 			}
 
-			key := Join{Id: id, AssocId: assocID, AssocAssocId: assocAssocID}
+			join := &Join{Id: id, AssocId: assocID, AssocAssocId: assocAssocID}
+			key := join.Key()
 			if _, ok := seen[key]; ok {
 				continue
 			}
 			seen[key] = struct{}{}
 
-			joins = append(joins, &Join{Id: id, AssocId: assocID, AssocAssocId: assocAssocID})
+			joins = append(joins, join)
 			continue
 		}
 
@@ -135,4 +136,14 @@ type Join struct {
 	Id           int64
 	AssocId      int64
 	AssocAssocId int64
+}
+
+func (join *Join) Key() string {
+	if join.AssocId == 0 {
+		return fmt.Sprintf("f%d", join.Id)
+	}
+	if join.AssocAssocId == 0 {
+		return fmt.Sprintf("f%df%d", join.Id, join.AssocId)
+	}
+	return fmt.Sprintf("f%df%df%d", join.Id, join.AssocId, join.AssocAssocId)
 }
